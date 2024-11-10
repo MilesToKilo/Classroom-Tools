@@ -8,7 +8,6 @@ editor_options:
 ---
 
 ### Load Packages  
-
 ```{r Load Packages, message = FALSE}
 pack <- c("tidyverse",    # Main processing package
           "tinytex")      # Knit to pdf
@@ -24,75 +23,51 @@ package.check <- lapply(
 rm(list = ls()) # Clear
 ```
 
-The listed packages are necessary for modifying the PollEverywhere exported gradebooks. I prefer using tidyverse functions to manipulate the data, and tinytex is needed to produce this rmarkdown file but isn't necessary for manipulating the gradebook.  
+Only the tidyverse package is necessary for modifying the PollEverywhere surveys. I prefer using tidyverse functions to manipulate the data, and tinytex is needed to produce this rmarkdown file but isn't necessary for manipulating the gradebook.  
 
 ### Identify File Names For Batch Processing  
-
 ```{r Identify File Names For Batch Processing}
-PE_List <- list.files("PollEverywhere", # Folder with Raw PE csv files
+PE_List <- list.files("PollEverywhere/Raw", # Folder with Raw PE csv files
                       pattern = ".csv", full = TRUE) %>% 
-  set_names(str_sub(., # Refere
-                    16, -5)) %>% print() # Isolate name by character position
+  # Create named list of files with shortened names for reference
+  set_names(str_sub(., start = 20, end = -5)) %>% # Isolate name by character position
+  print() 
 ```
 
-All of your raw csv files from PollEverywhere need to be stored within the same folder. Ideally, these are the only files in the folder, but you could leave non- ".csv" files within the folder, and not affect the code. Each of your files should be associated with the day of the PollEverywhere survey. My file pattern shows this by Week and day; i.e., Week 7, day 2 = W07D2. Depending on your file pattern, you can change the position to isolate your variable names.  
+All of your raw csv files from PollEverywhere (PE) need to be stored within the same folder. Ideally, these are the only files in the folder, but you could leave non- ".csv" files within the folder, and not affect the code. Each of your file names should be associated with the name of the canvas assignment. If you are combining all of your PE surveys into a single canvas assignment, I'll have separate code to accomplish that. Personally, my file pattern would shows Week and Day; i.e., PollEverywhere Week 7, day 2 = "PE W07D2". Depending on your file pattern, you can change the position to isolate your variable names.  
 
 ### Visualize Raw Imported Data  
-
 ```{r Visualize Raw Imported Data}
-df <- read_csv("PollEverywhere/GradebookExample.csv", show_col_types = FALSE) %>% print()
-df %>% separate_wider_delim(Email, "@", names = c("UCINet", NA) ) %>%
-  transmute("Points Possible" = UCINet, 
-            Points = (`Total answered` * 0.8) + (`Total points earned` * 0.2))
+df <- read_csv("PollEverywhere/Raw/GradebookExample.csv", show_col_types = FALSE) %>% print()
 ```
 
-The gradebook loads with ease, but the headers are not exactly how we want to see them. As for the rows, the last row has summary data that isn't needed for your gradebook. These need to be considered to reduce the dataset to what we need as well as avoid incorrect data manipulations.  
+The gradebook loads with ease, but the headers are not exactly how we want to see them. If you export a PollEverywhere (PE) survey with no modifications, the questions, points, and check-ins, are not written in this standard format. The questions are the entire question in quotations, points are "Points earned", and check-ins are "Responded at (PST)". Both points and check-ins are exactly the same without clarifying, which question it's associated with. For this code, it's essential that you rename these columns of each PE survey. You can use this example file to easily copy the column names over to your files. All of the other columns can be left as is.  
+
+### Options for Calculating Points  
+```{r Calculating Points}
+df %>% 
+  # filter out summary data at the bottom of each file
+  filter(!is.na(Rank)) %>% 
+  # Create new columns without keeping old columns
+  transmute(Email, 
+            PointsPossible = `Total points possible`,
+            Answered = `Total answered`,
+            TotalPoints = `Total points earned`, 
+            # No changes
+            Points_1 = TotalPoints, 
+            # Require a threshold of correct answers for full credit
+            Points_2 = if_else(TotalPoints > 3, 7, 0),
+            # Allot more points for participation, but incentivize correctness
+            Points_3 = (Answered * 0.8) + (TotalPoints * 0.2))
+```
+
+There are many ways that you can calculate points for a PollEverywhere survey, but I listed out 3 options that have been used in my classes. First, you can reward points as listed if PE calculates points as you want before exporting. Second, you can award full points as long as they hit a threshold of correct answers. For this example, as long as students get at least 50% correct, they get full credit. Lastly, you can award majority of points to participation, but also award points for being correct. For my example, I award 80% for participation and 20% for correctness; this is assuming each question is 1 point each. You'll need to adjust your calculations if questions are more points than 1.  
+
+If you'd like to utilize the geolocation tracking or check-in PE feature, you can only count points for questions they answered in class. You'll have to do some extra processing to filter out questions with no check-in. I have incorporated this method within my main example for batch processing all files.  
 
 ### Batch Process Files  
-
 ```{r Batch Process Files}
-PE_clean <- imap_dfr( # Run code separately on each file, then combine into 1 dataset
-  PE_List, # List of file names to batch process
-  ~ read_csv(.x, # Import each file in the list
-             show_col_types = FALSE) %>% # Avoid printout for each upload
-    add_column(Day = .y) %>% # Create column using names of each list element
-    filter(!is.na(Rank)) %>% # filter out summary data at the bottom of each file
-    separate_wider_delim(Email, # Separate the column with emails
-                         "@", # Before the "@" is the UCINet ID
-                         names = c("UCINet", NA)) %>% # Do not save the latter
-    transmute( # Create new columns without keeping old columns
-      "Points Possible" = as_factor(UCINet), # Rename for the upload file format
-      FirstName = `First name`, LastName = `Last name`,
-      Day = Day, # Keep this column
-      Grade = (`Total answered` * 0.8) + (`Total points earned` * 0.2))) %>% # Ending <imap_dfr> combines into 1 dataset
-  pivot_wider(names_from = Day, # Turn these column values into column names
-              values_from = Grade) %>% # Assign these column values to the new column names
-  print() # Check that this is what you expected
-```
-
-"imap_dfr" is a function that applies the following commands to each element within a list, and then combines all of the elements into a single dataframe. This is essential since all of the files need to be processed individually before preparing for export. First, we want to create a new column populated with the Day associated with the file. Second, we filter out the summary data by the rank column. All students are given a rank whereas a student may sign-in without an email, which can cause problems if used as a filter. Third, we only want to keep the columns needed for merging with your Canvas gradebook, which include: first name, last name, student email, and Day. If your raw gradebook has a column for student ID, change "SID" to match the column name and remove the "#" to uncomment that code. Then, we want to create a new column that gives full credit for students who answer at least 50% of the questions correctly. This concludes individually processing files, so we end the "imap_dfr" function to combine each element into 1 dataset. The last step is to separate their grades into columns according to the Day.  
-
-### Export Gradebook  
-
-```{r Export Gradebook}
-SaveDate <- format(Sys.Date(), format = "%Y%b%d")
-write_csv(PE_clean, # Dataset
-          na = "", # Keep NAs as blank
-          file.path("PE_E109", # Folder path
-            str_c("E109_PE_Uploads_", # Change to your class information
-                  SaveDate, ".csv"))) # File name
-```
-
-The final step is to export the dataset as a new csv file. First, auto-generate the date you make the new file. This helps with bookkeeping. If you want to save your exported gradebook in a specific folder, you can indicate its name within the quotations. If some students do not participate in the PollEverywhere survey, they will not be found in this csv file. I will have to see how this affects the entire gradebook when merging this file with Canvas, but I assume that Canvas will either give them zeroes or keep that slot empty.
-
-```{r Final Code}
-# List all CSV files in the specified folder
-PE_List <- list.files("PE_E109", # Directory with raw CSV files
-                      pattern = ".csv", full.names = TRUE) %>% 
-  # Create named list of files with shortened names for reference
-  set_names(str_sub(., start = 9, end = -5)) %>% 
-  print()  # Print file names to verify structure
-
+# 1. Import data
 # Process each file and combine into one dataset
 PE_clean <- imap_dfr(
   PE_List, # List of file names for batch processing
@@ -100,44 +75,71 @@ PE_clean <- imap_dfr(
     add_column(Day = .y) %>%  # Add Day column from file name for context
     filter(!is.na(Rank)) %>%  # Remove summary rows (usually marked by NA in Rank)
     
-    # Separate Email column to extract UCINet ID only (before "@")
-    separate_wider_delim(Email, "@", names = c("UCINet", NA)) %>%  
-    
-    # Standardize columns, including converting Points columns to double type
-    mutate(
-      FirstName = `First name`, LastName = `Last name`,  # Keep standardized name columns
-      Day = Day,  # Retain Day for pivoting later
-      across(matches("^Question_\\d+_Points$"), as.double)  # Convert Points columns to double
-    ) %>% 
-    
-    # Reshape data to long format for question-related columns
-    pivot_longer(
-      cols = matches("^Question_\\d+_(Points|CheckIn)$"),  # Select columns with question data
-      names_to = c("Question", ".value"),  # Create new columns "Question" and "value"
-      names_pattern = "^(Question_\\d+)_(Points|CheckIn)$"  # Split names into Question and type
-    ) %>% 
-    select(UCINet, Question, Points, CheckIn, Day) %>%  # Retain only relevant columns
-    
-    # Calculate total checked-in points per UCINet ID for each day
-    filter(!is.na(CheckIn)) %>%  # Only include rows where CheckIn is recorded
-    group_by(UCINet, Day) %>%
-    summarise(TotalPoints = sum(Points, na.rm = TRUE), .groups = "drop")  # Sum points and ungroup
-) %>%
+# 2. Wrangle data
+  # Separate Email column to extract UCINet ID only (before "@")
+  separate_wider_delim(Email, "@", names = c("UCINet", NA)) %>%  
   
+  # Standardize columns, including converting Points columns to double type
+  mutate(
+    # Keep standardized name columns
+    FirstName = `First name`, LastName = `Last name`,  
+    # Retain Day for pivoting later
+    Day, 
+    # Convert Points columns to double
+    across(matches("^Question_\\d+_Points$"), as.double)) %>%
+    # Columns that start with "Question_" and end with "_Points"
+  
+# Reshape data to long format for question-related columns
+  pivot_longer(
+    # Select columns with question data
+    cols = matches("^Question_\\d+_(Points|CheckIn)$"),
+    # Create new columns "Question" and "value"
+    names_to = c("Question", ".value"),
+    # Split names into Question and Check-In
+    names_pattern = "^(Question_\\d+)_(Points|CheckIn)$") %>%
+    # Retain only relevant columns
+    select(FirstName, LastName, UCINet, Question, Points, CheckIn, Day) %>%
+
+# 3. Calculate points
+  # Calculate total checked-in points per UCINet ID for each day
+  filter(!is.na(CheckIn)) %>%  # Only include rows where CheckIn is recorded
+  group_by(FirstName, LastName, UCINet, Day) %>%
+  # Sum points and ungroup
+  summarise(TotalPoints = sum(Points, na.rm = TRUE), .groups = "drop")) %>%
+
+# 4. Prepare for export
   # Reshape to wide format with days as columns and total points per day as values
   pivot_wider(
-    names_from = Day,  # Use Day column names for new columns
-    values_from = TotalPoints  # Populate with TotalPoints values
-  ) %>% 
-  arrange(UCINet) %>%  # Sort final data by UCINet ID for clarity
+    # Use Day column names for new columns
+    names_from = Day,
+    # Populate with TotalPoints values
+    values_from = TotalPoints) %>%
+# Sort final data by UCINet ID for clarity
+  arrange(UCINet) %>%  
   print()  # Display final output
-
-# Save processed data to a new CSV file with today's date
-SaveDate <- format(Sys.Date(), format = "%Y%b%d")  # Format date as "YYYYMonDD"
-write_csv(PE_clean, 
-          na = "",  # Leave missing values blank
-          file.path("PE_E109",  # Folder to save file
-            str_c("E109_PE_Uploads_", SaveDate, ".csv")))  # Create file name with class info and date
-
 ```
 
+"imap_dfr" is a function that applies the following commands to each element within a list, and then combines all of the elements into a single dataframe. This is essential since all of the files need to be processed individually before preparing for export.  
+
+**First**, we want to import the data and filter out the summary data by the rank column; you can use any column that isn't populated. All students are given a rank whereas a student may sign-in without an email, which can cause problems if used as a filter. At this step, we also create a new column populated with the Day associated with the file.  
+
+**Second**, we want to wrangle the data into a format easy for manipulations. We extract the UCINet IDs from the emails, which is needed for importing into Canvas. Depending on your institution, you may need to adjust how you extract student IDs to pair with your Canvas gradebook. For the 3 columns associated with each question (Question, Points, and CheckIn), we want to reshape the columns to be in a long format. We only want to keep the columns needed for merging with your Canvas gradebook, which include: UCINet (or student ID), Question, Points, CheckIn, and Day. We retain first & last names because we don't remember our students by their IDs; at least I don't! This makes it easier for us to read the code's outputs, but we'll have to delete those columns when importing into Canvas.  
+
+**Third**, we want to filter out any points not associated with a check-in. This indicates that students were not located in class if they don't have a value. Then we group rows by student ID and day. Now we can calculate the points as we want.  
+
+**Lastly**, we want to reshape the data into a wide format to easily read how many points students earned for each assignment. The format is also necessary for importing into Canvas. This concludes individually processing files, so we end the "imap_dfr" function to combine each element into 1 dataset.  
+
+### Export Gradebook  
+```{r Export Gradebook}
+SaveDate <- format(Sys.Date(), format = "%Y%b%d")
+write_csv(PE_clean,
+          na = "", # Leave missing values blank
+          file.path("PollEverywhere/Clean", # Folder path to save file
+            str_c("Example101_PE_", # Change to your class information
+                  SaveDate, ".csv")))
+```
+
+The final step is to export the dataset as a new csv file. We auto-generate the date to associate with the new file because that'll help with bookkeeping. Before you run the code for exporting, you'll want to change the file path to match your folder structure. Otherwise, this is the easiest step. You might notice that some students will have zeroes or blanks for a PollEverywhere (PE) survey. Zeroes indicate that students got none of the questions correct. If you integrate a participation component into your grading, then no student should have a zero; manually check if that occurs. If some students do not participate in a PE survey, they will not be found in this csv file. If they participate in 1 PE survey, but not another, then the latter column will have a blank cell for the student. This difference is important when discussing grades with students.  
+
+### Post Processing  
+You'll need to complete a few steps manually to organize the csv files specifically how Canvas wants for importing grades. First, delete FirstName and LastName. These were only retained for your convenience. Second, delete the header name "UCINet" (or student ID). Lastly, insert a row below these headers and include 1) "Points Possible" (without the quotations) above UCINet, and 2) the total points possible for each assignment. Preferrably, I save this as a new file, so that I don't have to rerun my code to view the output with student names. As you amass more PollEverywhere (PE) surveys, you can rerun the code and delete the older files because the new file will contain all PE surveys in the folder.  
