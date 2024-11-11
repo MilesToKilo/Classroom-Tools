@@ -7,8 +7,8 @@ This repository offers an easy way to process PollEverywhere CSV export files, s
 I’ve included sample data and an organized folder structure to help you run the code and adapt it to your course needs. Testing this process in a “sandbox” Canvas course first is highly recommended to avoid surprises in a live course.  
 
 ## Getting Started  
-**Set Up the Repository**: Clone or download this repository and follow the folder structure to organize your PollEverywhere export files.  
-**Run Example Data**: Experiment with the provided example data to see how the code processes responses and assigns participation points.  
+**Set Up the Repository**: Clone or download the PollEverywhere sub-folder and follow the folder structure provided to organize your PollEverywhere export files.  
+**Run Example Data**: Within the PollEverywhere folder, experiment with the included example data to understand how the code processes responses and assigns participation points.  
 **Test in Sandbox Mode**: Before integrating into a live course, test the code on practice surveys in a sandbox Canvas course to ensure smooth implementation.  
 
 ## Why Use PollEverywhere?  
