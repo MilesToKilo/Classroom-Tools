@@ -1,7 +1,15 @@
-# PollEverywhere surveys  
+# PollEverywhere Surveys for Enhanced Student Engagement and Participation  
+PollEverywhere surveys are an effective tool to foster student engagement and gauge comprehension in real-time. Traditional in-class questions often leave quieter students unheard, but PollEverywhere allows all students to participate anonymously behind a screen. For instructors, this method provides valuable feedback, highlighting areas that may need clarification before progressing to new material. PollEverywhere can be used as frequently as desired, with each response recorded for grading and participation tracking. Additionally, features like geolocation ensure that students are physically present in class to receive participation credit.  
 
-PollEverywhere surveys are a great tool to increase student engagement and assess student comprehension. Educators will commonly engage students by asking the class questions, but not all students have the confidence to speak up in front of the class. PollEverywhere surveys enable students to answer questions behind a screen while also relaying their answers to the instructor. For the instructor, these surveys serve as a quick class assessment whether students are comprehending the topic as intended and if they must clarify anything before moving onto the next topic. PollEverywhere can be implemented as frequently as the instructor prefers, and the results are recorded. Instructors can utilize these results to grade students on participation, and with new features like geolocation, this ensures students must be present in-person to get credit for their participation.  
+## About This Repository  
+This repository offers an easy way to process PollEverywhere CSV export files, so you can seamlessly award participation points based on survey results. It’s designed specifically for PollEverywhere's exported data structure and integrates with Canvas requirements at the University of California Irvine.  
 
-I highly encourage instructors to integrate PollEverywhere surveys into their course design, and I am sharing this repository to help you begin that process. I have included both example data and folder structure to excute my code and process your PollEverywhere results. My code was based on PollEverywhere exported csv files and Canvas requirements for the University of California Irvine. I would recommend trying to implement this code on example surveys of your own in a "sandbox" Canvas course before integrating it within a course; it's good practice to test it beforehand because it's almost guarenteed that something will not go as intended.  
+I’ve included sample data and an organized folder structure to help you run the code and adapt it to your course needs. Testing this process in a “sandbox” Canvas course first is highly recommended to avoid surprises in a live course.  
 
-I hope this repository is helpful, and I'm sure your students will appreciate your efforts to improve your courses. Good luck!
+## Getting Started  
+**Set Up the Repository**: Clone or download this repository and follow the folder structure to organize your PollEverywhere export files.  
+**Run Example Data**: Experiment with the provided example data to see how the code processes responses and assigns participation points.  
+**Test in Sandbox Mode**: Before integrating into a live course, test the code on practice surveys in a sandbox Canvas course to ensure smooth implementation.  
+
+## Why Use PollEverywhere?  
+Integrating PollEverywhere surveys into your course design can transform the learning experience. I’m passionate about leveraging these tools to create inclusive and dynamic classroom environments, and I hope this repository empowers you to do the same. Good luck, and here’s to more engaged classrooms!  
